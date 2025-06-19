@@ -8,7 +8,7 @@ name = "aerospace-rules-service"
 path = "src/bin/service.rs"
 
 [[bin]]
-name = "aerospace-rules-cli"
+name = "aerospace-rules"
 path = "src/bin/cli.rs"
 
 [dependencies]

@@ -20,7 +20,7 @@ async fn query_service(request: Request) -> Result<Response, Box<dyn std::error:
 }
 
 #[derive(Parser)]
-#[command(name = "aerospace-rules-cli")]
+#[command(name = "aerospace-rules")]
 #[command(about = "A CLI client for aerospace window rules")]
 struct Args {
     /// Path to config file
