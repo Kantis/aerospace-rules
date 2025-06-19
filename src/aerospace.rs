@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::error::Error;
 use std::process::Command;
 
 #[derive(serde::Serialize, Deserialize, Debug, Clone)]
@@ -22,10 +23,8 @@ struct AerospaceWindow {
     window_title: String,
 }
 
-fn list_workspaces() -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let output = Command::new("aerospace")
-        .args(["list-workspaces", "--all"])
-        .output()?;
+fn execute_command(args: &[&str]) -> Result<String, Box<dyn Error>> {
+    let output = Command::new("aerospace").args(args).output()?;
 
     if !output.status.success() {
         return Err(format!(
@@ -35,36 +34,21 @@ fn list_workspaces() -> Result<Vec<String>, Box<dyn std::error::Error>> {
         .into());
     }
 
-    let workspaces_str = String::from_utf8(output.stdout)?;
-    let workspaces: Vec<String> = workspaces_str
-        .lines()
-        .map(|line| line.trim().to_string())
-        .filter(|line| !line.is_empty())
-        .collect();
-
-    Ok(workspaces)
+    Ok(String::from_utf8(output.stdout)?)
 }
 
-fn list_windows_in_workspace(
-    workspace: &str,
-) -> Result<Vec<AerospaceWindow>, Box<dyn std::error::Error>> {
-    let output = Command::new("aerospace")
-        .args(["list-windows", "--workspace", workspace, "--json"])
-        .output()?;
+fn list_workspaces() -> Result<Vec<String>, Box<dyn Error>> {
+    execute_command(&["list-workspaces", "--all"]).map(|s| {
+        s.lines()
+            .map(|line| line.trim().to_string())
+            .filter(|line| !line.is_empty())
+            .collect()
+    })
+}
 
-    if !output.status.success() {
-        return Err(format!(
-            "aerospace list-windows for workspace {} failed: {}",
-            workspace,
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
-    }
-
-    let json_str = String::from_utf8(output.stdout)?;
-    let aerospace_windows: Vec<AerospaceWindow> = serde_json::from_str(&json_str)?;
-
-    Ok(aerospace_windows)
+fn list_windows_in_workspace(workspace: &str) -> Result<Vec<AerospaceWindow>, Box<dyn Error>> {
+    execute_command(&["list-windows", "--workspace", workspace, "--json"])
+        .map(|s| serde_json::from_str::<Vec<AerospaceWindow>>(&s).map_err(|e| e.into())).flatten()
 }
 
 pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
