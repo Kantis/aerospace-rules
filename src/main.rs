@@ -13,7 +13,7 @@ fn main() {
             for rule in &config.rules {
                 match &rule.rule_type {
                     config::RuleType::Window { condition, .. } => {
-                        println!("Rule: {} - {}", rule.name, condition);
+                        println!("Rule: {} - {condition}", rule.name);
                     }
                     config::RuleType::EmptyWorkspace { workspace, command } => {
                         println!(

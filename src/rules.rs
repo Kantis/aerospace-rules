@@ -1,27 +1,25 @@
-use std::error::Error;
 use crate::{
     config::{Config, RuleType},
     WindowInfo,
 };
+use std::error::Error;
 use std::process::Command;
 
 pub fn evaluate_rules_for_workspace(
     workspace: &str,
-    windows: &[WindowInfo],
+    _windows: &[WindowInfo],
     focused_workspace_windows: Vec<WindowInfo>,
     config: &Config,
 ) -> Result<Vec<String>, Box<dyn Error>> {
     let mut actions_performed = Vec::new();
 
     println!(
-        "Evaluating {} rules for workspace {}",
-        config.rules.len(),
-        workspace
+        "Evaluating {} rules for workspace {workspace}",
+        config.rules.len()
     );
     println!(
-        "Found {} windows in workspace {}",
+        "Found {} windows in workspace {workspace}",
         focused_workspace_windows.len(),
-        workspace
     );
 
     for rule in &config.rules {
@@ -35,20 +33,20 @@ pub fn evaluate_rules_for_workspace(
                         if matches_condition(condition, window)? {
                             println!(
                                 "Rule '{}' matches window: {} ({})",
-                                rule.name, window.app_name, window.window_id
+                                rule.name, window.app_name, window.window_id,
                             );
 
                             if let Err(e) = execute_action(action, window) {
                                 eprintln!(
-                                    "Failed to execute action '{}' for window {}: {}",
-                                    action, window.window_id, e
+                                    "Failed to execute action '{action}' for window {}: {e}",
+                                    window.window_id,
                                 );
                                 continue;
                             }
 
                             actions_performed.push(format!(
-                                "Applied '{}' to {} (ID: {}): {}",
-                                rule.name, window.app_name, window.window_id, action
+                                "Applied '{}' to {} (ID: {}): {action}",
+                                rule.name, window.app_name, window.window_id,
                             ));
                         }
                     }
@@ -60,24 +58,18 @@ pub fn evaluate_rules_for_workspace(
             } => {
                 // Only process empty workspace rules if workspace is empty and matches
                 if focused_workspace_windows.is_empty() && rule_workspace == workspace {
-                    println!(
-                        "Workspace {} is empty, executing command: {}",
-                        workspace, command
-                    );
+                    println!("Workspace {workspace} is empty, executing command: {command}");
 
                     if let Err(e) = execute_empty_workspace_command(command) {
-                        eprintln!(
-                            "Failed to execute empty workspace command '{}': {}",
-                            command, e
-                        );
+                        eprintln!("Failed to execute empty workspace command '{command}': {e}");
                         actions_performed.push(format!(
-                            "Failed to execute empty workspace command '{}': {}",
-                            rule.name, e
+                            "Failed to execute empty workspace command '{}': {e}",
+                            rule.name,
                         ));
                     } else {
                         actions_performed.push(format!(
-                            "Executed empty workspace rule '{}': {}",
-                            rule.name, command
+                            "Executed empty workspace rule '{}': {command}",
+                            rule.name,
                         ));
                     }
                 }
@@ -88,17 +80,14 @@ pub fn evaluate_rules_for_workspace(
     Ok(actions_performed)
 }
 
-fn matches_condition(
-    condition: &str,
-    window: &WindowInfo,
-) -> Result<bool, Box<dyn Error>> {
+fn matches_condition(condition: &str, window: &WindowInfo) -> Result<bool, Box<dyn Error>> {
     // Simple condition parser for now
     // Format: "field = 'value'" or "field > number"
 
     if condition.contains(" = ") {
         let parts: Vec<&str> = condition.split(" = ").collect();
         if parts.len() != 2 {
-            return Err(format!("Invalid condition format: {}", condition).into());
+            return Err(format!("Invalid condition format: {condition}").into());
         }
 
         let field = parts[0].trim();
@@ -108,12 +97,12 @@ fn matches_condition(
             "app-id" | "app-name" => Ok(window.app_name == value),
             "window-title" => Ok(window.window_title.contains(value)),
             "workspace" => Ok(window.workspace == value),
-            _ => Err(format!("Unknown field in condition: {}", field).into()),
+            _ => Err(format!("Unknown field in condition: {field}").into()),
         }
     } else if condition.contains(" > ") {
         let parts: Vec<&str> = condition.split(" > ").collect();
         if parts.len() != 2 {
-            return Err(format!("Invalid condition format: {}", condition).into());
+            return Err(format!("Invalid condition format: {condition}").into());
         }
 
         let field = parts[0].trim();
@@ -126,10 +115,10 @@ fn matches_condition(
                 Ok(value < 1200) // Mock logic
             }
             "window-id" => Ok(window.window_id > value),
-            _ => Err(format!("Unknown numeric field in condition: {}", field).into()),
+            _ => Err(format!("Unknown numeric field in condition: {field}").into()),
         }
     } else {
-        Err(format!("Unsupported condition format: {}", condition).into())
+        Err(format!("Unsupported condition format: {condition}").into())
     }
 }
 
@@ -180,21 +169,21 @@ fn execute_action(action: &str, window: &WindowInfo) -> Result<(), Box<dyn Error
 
         println!("Maximized window {}", window.window_id);
     } else {
-        return Err(format!("Unknown action: {}", action).into());
+        return Err(format!("Unknown action: {action}").into());
     }
 
     Ok(())
 }
 
 fn execute_empty_workspace_command(command: &str) -> Result<(), Box<dyn Error>> {
-    println!("Executing empty workspace command: {}", command);
+    println!("Executing empty workspace command: {command}");
 
     // Parse command and arguments
     let parts = match shlex::split(command) {
         Some(parts) => parts,
-        None => return Err(format!("Failed to parse command: {}", command).into()),
+        None => return Err(format!("Failed to parse command: {command}").into()),
     };
-    
+
     if parts.is_empty() {
         return Err("Empty command".into());
     }
@@ -206,8 +195,7 @@ fn execute_empty_workspace_command(command: &str) -> Result<(), Box<dyn Error>> 
 
     if !output.status.success() {
         return Err(format!(
-            "Command '{}' failed with exit code {:?}: {}",
-            command,
+            "Command '{command}' failed with exit code {:?}: {}",
             output.status.code(),
             String::from_utf8_lossy(&output.stderr)
         )
@@ -220,6 +208,6 @@ fn execute_empty_workspace_command(command: &str) -> Result<(), Box<dyn Error>> 
         println!("Command output: {}", stdout.trim());
     }
 
-    println!("Successfully executed empty workspace command: {}", command);
+    println!("Successfully executed empty workspace command: {command}");
     Ok(())
 }
