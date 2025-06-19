@@ -1,9 +1,9 @@
-pub mod config;
 pub mod aerospace;
+pub mod config;
 pub mod rules;
 
-use serde::{Deserialize, Serialize};
 pub use aerospace::WindowInfo;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Request {
