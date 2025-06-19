@@ -53,8 +53,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "windows" => Request::GetWindows,
         "config" => Request::GetConfig,
         "reload" => Request::Reload,
+        "on-workspace-change" => {
+            let workspace = args.get(2).ok_or("Usage: aerospace-rules-cli on-workspace-change <workspace>")?;
+            Request::EvaluateRules { workspace: workspace.to_string() }
+        }
         _ => {
-            eprintln!("Usage: {} [windows|config|reload]", args[0]);
+            eprintln!("Usage: {} [windows|config|reload|on-workspace-change <workspace>]", args[0]);
             return Ok(());
         }
     };
@@ -76,6 +80,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Response::Success => {
                     println!("Command executed successfully");
+                }
+                Response::RulesEvaluated { actions_performed } => {
+                    if actions_performed.is_empty() {
+                        println!("No rules matched for workspace change");
+                    } else {
+                        println!("Rules evaluated successfully:");
+                        for action in actions_performed {
+                            println!("  {}", action);
+                        }
+                    }
                 }
                 Response::Error(err) => {
                     eprintln!("Service error: {}", err);

@@ -1,4 +1,4 @@
-use aerospace_rules::{config, aerospace, Request, Response, ServiceState, SOCKET_PATH};
+use aerospace_rules::{config, aerospace, rules, Request, Response, ServiceState, SOCKET_PATH};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::net::{UnixListener, UnixStream};
@@ -33,6 +33,18 @@ async fn handle_client(mut stream: UnixStream, state: SharedState) -> Result<(),
         Request::Reload => {
             refresh_state(state.clone()).await;
             Response::Success
+        }
+        Request::EvaluateRules { workspace } => {
+            let state_guard = state.read().await;
+            match &state_guard.config {
+                Some(config) => {
+                    match rules::evaluate_rules_for_workspace(&workspace, &state_guard.windows, config) {
+                        Ok(actions) => Response::RulesEvaluated { actions_performed: actions },
+                        Err(e) => Response::Error(format!("Rule evaluation failed: {}", e)),
+                    }
+                }
+                None => Response::Error("No config loaded".to_string()),
+            }
         }
     };
     
