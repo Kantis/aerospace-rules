@@ -73,7 +73,7 @@ async fn fallback_direct(config_path: Option<&str>) -> Result<(), Box<dyn std::e
                 );
             }
         }
-        Err(e) => println!("Failed to list windows: {}", e),
+        Err(e) => println!("Failed to list windows: {e}"),
     }
 
     Ok(())
@@ -150,16 +150,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else {
                     println!("Rules evaluated successfully:");
                     for action in actions_performed {
-                        println!("  {}", action);
+                        println!("  {action}");
                     }
                 }
             }
             Response::Error(err) => {
-                eprintln!("Service error: {}", err);
+                eprintln!("Service error: {err}");
             }
         },
         Err(e) => {
-            eprintln!("Failed to connect to service: {}", e);
+            eprintln!("Failed to connect to service: {e}");
             if matches!(command, Command::Windows) {
                 fallback_direct(args.config.as_deref()).await?;
             }

@@ -134,8 +134,7 @@ action = "move-to-workspace 2"
         // Test the actual test-config.toml file
         let config = load_config_from_path(Some("test-config.toml"));
 
-        if config.is_some() {
-            let config = config.unwrap();
+        if let Some(config) = config {
             assert_eq!(config.rules.len(), 3);
 
             assert_eq!(config.rules[0].name, "Test Rule");

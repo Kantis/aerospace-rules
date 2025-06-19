@@ -67,8 +67,7 @@ pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn Error>> {
 
 pub fn list_windows_in_workspace(workspace: &str) -> Result<Vec<WindowInfo>, Box<dyn Error>> {
     execute_command(&["list-windows", "--workspace", workspace, "--json"])
-        .map(|s| serde_json::from_str::<Vec<AerospaceWindow>>(&s).map_err(|e| e.into()))
-        .flatten()
+        .and_then(|s| serde_json::from_str::<Vec<AerospaceWindow>>(&s).map_err(|e| e.into()))
         .map(|windows| {
             windows
                 .iter()

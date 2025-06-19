@@ -1,3 +1,4 @@
+use aerospace_rules::aerospace::list_windows_in_workspace;
 use aerospace_rules::{aerospace, config, rules, Request, Response, ServiceState, SOCKET_PATH};
 use clap::Parser;
 use notify::{
@@ -10,7 +11,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
-use aerospace_rules::aerospace::list_windows_in_workspace;
 
 #[derive(Parser)]
 #[command(name = "aerospace-rules-service")]
@@ -66,7 +66,7 @@ async fn handle_client(
                         Ok(actions) => Response::RulesEvaluated {
                             actions_performed: actions,
                         },
-                        Err(e) => Response::Error(format!("Rule evaluation failed: {}", e)),
+                        Err(e) => Response::Error(format!("Rule evaluation failed: {e}")),
                     }
                 }
                 None => Response::Error("No config loaded".to_string()),
@@ -119,7 +119,7 @@ async fn refresh_state(state: SharedState) {
     let windows = match aerospace::list_windows() {
         Ok(windows) => windows,
         Err(e) => {
-            eprintln!("Failed to refresh windows: {}", e);
+            eprintln!("Failed to refresh windows: {e}");
             return;
         }
     };
@@ -171,10 +171,10 @@ async fn watch_config_file(
         move |result: Result<Event, notify::Error>| match result {
             Ok(event) => {
                 if let Err(e) = tx.send(event) {
-                    eprintln!("Failed to send watch event: {}", e);
+                    eprintln!("Failed to send watch event: {e}");
                 }
             }
-            Err(e) => eprintln!("Watch error: {}", e),
+            Err(e) => eprintln!("Watch error: {e}"),
         },
         NotifyConfig::default(),
     )?;
@@ -183,14 +183,14 @@ async fn watch_config_file(
     if let Some(parent_dir) = config_path.parent() {
         // Ensure the parent directory exists
         if let Err(e) = std::fs::create_dir_all(parent_dir) {
-            eprintln!("Failed to create config directory {:?}: {}", parent_dir, e);
+            eprintln!("Failed to create config directory {parent_dir:?}: {e}");
         }
 
         if let Err(e) = watcher.watch(parent_dir, RecursiveMode::NonRecursive) {
-            eprintln!("Failed to watch config directory {:?}: {}", parent_dir, e);
+            eprintln!("Failed to watch config directory {parent_dir:?}: {e}");
             return Err(e.into());
         }
-        println!("Watching config directory: {:?}", parent_dir);
+        println!("Watching config directory: {parent_dir:?}");
     }
 
     // Process filesystem events
@@ -255,7 +255,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let watcher_state = state.clone();
         tokio::spawn(async move {
             if let Err(e) = watch_config_file(config_path, watcher_state).await {
-                eprintln!("Config file watcher failed: {}", e);
+                eprintln!("Config file watcher failed: {e}");
             }
         });
     } else {
@@ -273,7 +273,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start Unix socket server
     let listener = UnixListener::bind(SOCKET_PATH)?;
-    println!("Service listening on {}", SOCKET_PATH);
+    println!("Service listening on {SOCKET_PATH}");
 
     loop {
         match listener.accept().await {
@@ -281,12 +281,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let state_clone = state.clone();
                 tokio::spawn(async move {
                     if let Err(e) = handle_client(stream, state_clone).await {
-                        eprintln!("Error handling client: {}", e);
+                        eprintln!("Error handling client: {e}");
                     }
                 });
             }
             Err(e) => {
-                eprintln!("Error accepting connection: {}", e);
+                eprintln!("Error accepting connection: {e}");
             }
         }
     }
