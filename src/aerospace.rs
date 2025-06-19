@@ -24,11 +24,15 @@ struct AerospaceWindow {
 
 fn list_workspaces() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let output = Command::new("aerospace")
-        .args(&["list-workspaces", "--all"])
+        .args(["list-workspaces", "--all"])
         .output()?;
 
     if !output.status.success() {
-        return Err(format!("aerospace list-workspaces failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+        return Err(format!(
+            "aerospace list-workspaces failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
     }
 
     let workspaces_str = String::from_utf8(output.stdout)?;
@@ -41,18 +45,25 @@ fn list_workspaces() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     Ok(workspaces)
 }
 
-fn list_windows_in_workspace(workspace: &str) -> Result<Vec<AerospaceWindow>, Box<dyn std::error::Error>> {
+fn list_windows_in_workspace(
+    workspace: &str,
+) -> Result<Vec<AerospaceWindow>, Box<dyn std::error::Error>> {
     let output = Command::new("aerospace")
-        .args(&["list-windows", "--workspace", workspace, "--json"])
+        .args(["list-windows", "--workspace", workspace, "--json"])
         .output()?;
 
     if !output.status.success() {
-        return Err(format!("aerospace list-windows for workspace {} failed: {}", workspace, String::from_utf8_lossy(&output.stderr)).into());
+        return Err(format!(
+            "aerospace list-windows for workspace {} failed: {}",
+            workspace,
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
     }
 
     let json_str = String::from_utf8(output.stdout)?;
     let aerospace_windows: Vec<AerospaceWindow> = serde_json::from_str(&json_str)?;
-    
+
     Ok(aerospace_windows)
 }
 
