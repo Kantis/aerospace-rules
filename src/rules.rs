@@ -8,15 +8,10 @@ use std::process::Command;
 pub fn evaluate_rules_for_workspace(
     workspace: &str,
     windows: &[WindowInfo],
+    focused_workspace_windows: Vec<WindowInfo>,
     config: &Config,
 ) -> Result<Vec<String>, Box<dyn Error>> {
     let mut actions_performed = Vec::new();
-
-    // Get windows in the specified workspace
-    let workspace_windows: Vec<&WindowInfo> = windows
-        .iter()
-        .filter(|w| w.workspace == workspace)
-        .collect();
 
     println!(
         "Evaluating {} rules for workspace {}",
@@ -25,7 +20,7 @@ pub fn evaluate_rules_for_workspace(
     );
     println!(
         "Found {} windows in workspace {}",
-        workspace_windows.len(),
+        focused_workspace_windows.len(),
         workspace
     );
 
@@ -35,8 +30,8 @@ pub fn evaluate_rules_for_workspace(
         match &rule.rule_type {
             RuleType::Window { condition, action } => {
                 // Only process window rules if there are windows in the workspace
-                if !workspace_windows.is_empty() {
-                    for window in &workspace_windows {
+                if !focused_workspace_windows.is_empty() {
+                    for window in &focused_workspace_windows {
                         if matches_condition(condition, window)? {
                             println!(
                                 "Rule '{}' matches window: {} ({})",
@@ -64,7 +59,7 @@ pub fn evaluate_rules_for_workspace(
                 command,
             } => {
                 // Only process empty workspace rules if workspace is empty and matches
-                if workspace_windows.is_empty() && rule_workspace == workspace {
+                if focused_workspace_windows.is_empty() && rule_workspace == workspace {
                     println!(
                         "Workspace {} is empty, executing command: {}",
                         workspace, command

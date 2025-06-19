@@ -46,12 +46,7 @@ fn list_workspaces() -> Result<Vec<String>, Box<dyn Error>> {
     })
 }
 
-fn list_windows_in_workspace(workspace: &str) -> Result<Vec<AerospaceWindow>, Box<dyn Error>> {
-    execute_command(&["list-windows", "--workspace", workspace, "--json"])
-        .map(|s| serde_json::from_str::<Vec<AerospaceWindow>>(&s).map_err(|e| e.into())).flatten()
-}
-
-pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
+pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn Error>> {
     let workspaces = list_workspaces()?;
     let mut all_windows = Vec::new();
 
@@ -68,4 +63,21 @@ pub fn list_windows() -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
     }
 
     Ok(all_windows)
+}
+
+pub fn list_windows_in_workspace(workspace: &str) -> Result<Vec<WindowInfo>, Box<dyn Error>> {
+    execute_command(&["list-windows", "--workspace", workspace, "--json"])
+        .map(|s| serde_json::from_str::<Vec<AerospaceWindow>>(&s).map_err(|e| e.into()))
+        .flatten()
+        .map(|windows| {
+            windows
+                .iter()
+                .map(|window| WindowInfo {
+                    app_name: window.app_name.clone(),
+                    window_id: window.window_id,
+                    window_title: window.window_title.clone(),
+                    workspace: workspace.to_string(),
+                })
+                .collect()
+        })
 }

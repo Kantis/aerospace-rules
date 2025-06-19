@@ -10,6 +10,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
+use aerospace_rules::aerospace::list_windows_in_workspace;
 
 #[derive(Parser)]
 #[command(name = "aerospace-rules-service")]
@@ -59,6 +60,7 @@ async fn handle_client(
                     match rules::evaluate_rules_for_workspace(
                         &workspace,
                         &state_guard.windows,
+                        list_windows_in_workspace(workspace.as_str()).expect("foo"),
                         config,
                     ) {
                         Ok(actions) => Response::RulesEvaluated {
