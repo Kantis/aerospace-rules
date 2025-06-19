@@ -54,11 +54,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "config" => Request::GetConfig,
         "reload" => Request::Reload,
         "on-workspace-change" => {
-            let workspace = args.get(2).ok_or("Usage: aerospace-rules-cli on-workspace-change <workspace>")?;
-            Request::EvaluateRules { workspace: workspace.to_string() }
+            let workspace = env::var("AEROSPACE_FOCUSED_WORKSPACE")
+                .map_err(|_| "AEROSPACE_FOCUSED_WORKSPACE environment variable not set")?;
+            Request::EvaluateRules { workspace }
         }
         _ => {
-            eprintln!("Usage: {} [windows|config|reload|on-workspace-change <workspace>]", args[0]);
+            eprintln!("Usage: {} [windows|config|reload|on-workspace-change]", args[0]);
             return Ok(());
         }
     };
