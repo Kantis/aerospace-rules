@@ -132,7 +132,7 @@ action = "move-to-workspace 2"
     #[test]
     fn test_load_test_config_file() {
         // Test the actual test-config.toml file
-        let config = load_config_from_path(Some("test-config.toml"));
+        let config = load_config_from_path(Some("test/test-config.toml"));
 
         if let Some(config) = config {
             assert_eq!(config.rules.len(), 3);
