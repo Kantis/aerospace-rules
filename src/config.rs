@@ -11,8 +11,23 @@ pub struct Config {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Rule {
     pub name: String,
-    pub condition: String,
-    pub action: String,
+    #[serde(flatten)]
+    pub rule_type: RuleType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type")]
+pub enum RuleType {
+    #[serde(rename = "window")]
+    Window {
+        condition: String,
+        action: String,
+    },
+    #[serde(rename = "empty-workspace")]
+    EmptyWorkspace {
+        workspace: String,
+        command: String,
+    },
 }
 
 fn find_config_file() -> Option<PathBuf> {
@@ -64,11 +79,13 @@ mod tests {
         writeln!(temp_file, r#"
 [[rules]]
 name = "Test Rule"
+type = "window"
 condition = "app-name = 'TestApp'"
 action = "maximize"
 
 [[rules]]
 name = "Another Rule"
+type = "window"
 condition = "workspace = '1'"
 action = "move-to-workspace 2"
         "#).expect("Failed to write to temp file");
@@ -81,12 +98,20 @@ action = "move-to-workspace 2"
         assert_eq!(config.rules.len(), 2);
         
         assert_eq!(config.rules[0].name, "Test Rule");
-        assert_eq!(config.rules[0].condition, "app-name = 'TestApp'");
-        assert_eq!(config.rules[0].action, "maximize");
+        if let RuleType::Window { condition, action } = &config.rules[0].rule_type {
+            assert_eq!(condition, "app-name = 'TestApp'");
+            assert_eq!(action, "maximize");
+        } else {
+            panic!("Expected Window rule type");
+        }
         
         assert_eq!(config.rules[1].name, "Another Rule");
-        assert_eq!(config.rules[1].condition, "workspace = '1'");
-        assert_eq!(config.rules[1].action, "move-to-workspace 2");
+        if let RuleType::Window { condition, action } = &config.rules[1].rule_type {
+            assert_eq!(condition, "workspace = '1'");
+            assert_eq!(action, "move-to-workspace 2");
+        } else {
+            panic!("Expected Window rule type");
+        }
     }
     
     #[test]
@@ -113,15 +138,73 @@ action = "move-to-workspace 2"
         
         if config.is_some() {
             let config = config.unwrap();
-            assert_eq!(config.rules.len(), 2);
+            assert_eq!(config.rules.len(), 3);
             
             assert_eq!(config.rules[0].name, "Test Rule");
-            assert_eq!(config.rules[0].condition, "app-name = 'Ghostty'");
-            assert_eq!(config.rules[0].action, "maximize");
+            if let RuleType::Window { condition, action } = &config.rules[0].rule_type {
+                assert_eq!(condition, "app-name = 'Ghostty'");
+                assert_eq!(action, "maximize");
+            } else {
+                panic!("Expected Window rule type");
+            }
             
             assert_eq!(config.rules[1].name, "Move IntelliJ");
-            assert_eq!(config.rules[1].condition, "app-name = 'IntelliJ IDEA'");
-            assert_eq!(config.rules[1].action, "move-to-workspace 5");
+            if let RuleType::Window { condition, action } = &config.rules[1].rule_type {
+                assert_eq!(condition, "app-name = 'IntelliJ IDEA'");
+                assert_eq!(action, "move-to-workspace 5");
+            } else {
+                panic!("Expected Window rule type");
+            }
+            
+            // Test empty workspace rule
+            assert_eq!(config.rules[2].name, "Terminal for Empty Workspace 99");
+            if let RuleType::EmptyWorkspace { workspace, command } = &config.rules[2].rule_type {
+                assert_eq!(workspace, "99");
+                assert_eq!(command, "open -a Terminal");
+            } else {
+                panic!("Expected EmptyWorkspace rule type");
+            }
+        }
+    }
+    
+    #[test]
+    fn test_config_with_empty_workspace_rule() {
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        writeln!(temp_file, r#"
+[[rules]]
+name = "Simple Rule"
+type = "window"
+condition = "app-name = 'TestApp'"
+action = "maximize"
+
+[[rules]]
+name = "Empty Workspace Terminal"
+type = "empty-workspace"
+workspace = "5"
+command = "open -a Terminal"
+        "#).expect("Failed to write to temp file");
+        
+        let config_path = temp_file.path().to_str().unwrap();
+        let config = load_config_from_path(Some(config_path));
+        
+        assert!(config.is_some());
+        let config = config.unwrap();
+        assert_eq!(config.rules.len(), 2);
+        
+        // Check window rule
+        if let RuleType::Window { condition, action } = &config.rules[0].rule_type {
+            assert_eq!(condition, "app-name = 'TestApp'");
+            assert_eq!(action, "maximize");
+        } else {
+            panic!("Expected Window rule type");
+        }
+        
+        // Check empty workspace rule
+        if let RuleType::EmptyWorkspace { workspace, command } = &config.rules[1].rule_type {
+            assert_eq!(workspace, "5");
+            assert_eq!(command, "open -a Terminal");
+        } else {
+            panic!("Expected EmptyWorkspace rule type");
         }
     }
     

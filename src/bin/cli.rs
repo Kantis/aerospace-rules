@@ -47,7 +47,14 @@ async fn fallback_direct(config_path: Option<&str>) -> Result<(), Box<dyn std::e
         Some(config) => {
             println!("Loaded {} rules", config.rules.len());
             for rule in &config.rules {
-                println!("Rule: {} - {}", rule.name, rule.condition);
+                match &rule.rule_type {
+                    config::RuleType::Window { condition, .. } => {
+                        println!("Rule: {} - {}", rule.name, condition);
+                    }
+                    config::RuleType::EmptyWorkspace { workspace, command } => {
+                        println!("Rule: {} - empty workspace {} -> {}", rule.name, workspace, command);
+                    }
+                }
             }
         }
         None => println!("No config file found, running with defaults"),
@@ -110,7 +117,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Response::Config(config) => {
                     println!("Loaded {} rules", config.rules.len());
                     for rule in &config.rules {
-                        println!("Rule: {} - {}", rule.name, rule.condition);
+                        match &rule.rule_type {
+                            config::RuleType::Window { condition, .. } => {
+                                println!("Rule: {} - {}", rule.name, condition);
+                            }
+                            config::RuleType::EmptyWorkspace { workspace, command } => {
+                                println!("Rule: {} - empty workspace {} -> {}", rule.name, workspace, command);
+                            }
+                        }
                     }
                 }
                 Response::Success => {

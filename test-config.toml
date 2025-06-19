@@ -1,9 +1,17 @@
 [[rules]]
 name = "Test Rule"
+type = "window"
 condition = "app-name = 'Ghostty'"
 action = "maximize"
 
 [[rules]]
 name = "Move IntelliJ"
+type = "window"
 condition = "app-name = 'IntelliJ IDEA'"
 action = "move-to-workspace 5"
+
+[[rules]]
+name = "Terminal for Empty Workspace 99"
+type = "empty-workspace"
+workspace = "99"
+command = "open -a Terminal"

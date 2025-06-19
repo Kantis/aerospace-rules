@@ -11,7 +11,14 @@ fn main() {
         Some(config) => {
             println!("Loaded {} rules", config.rules.len());
             for rule in &config.rules {
-                println!("Rule: {} - {}", rule.name, rule.condition);
+                match &rule.rule_type {
+                    config::RuleType::Window { condition, .. } => {
+                        println!("Rule: {} - {}", rule.name, condition);
+                    }
+                    config::RuleType::EmptyWorkspace { workspace, command } => {
+                        println!("Rule: {} - empty workspace {} -> {}", rule.name, workspace, command);
+                    }
+                }
             }
         }
         None => println!("No config file found, running with defaults"),

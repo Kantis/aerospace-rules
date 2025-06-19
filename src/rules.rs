@@ -1,4 +1,4 @@
-use crate::{config::Config, WindowInfo};
+use crate::{config::{Config, RuleType}, WindowInfo};
 use std::process::Command;
 
 pub fn evaluate_rules_for_workspace(
@@ -20,19 +20,39 @@ pub fn evaluate_rules_for_workspace(
     for rule in &config.rules {
         println!("Checking rule: {}", rule.name);
         
-        for window in &workspace_windows {
-            if matches_condition(&rule.condition, window)? {
-                println!("Rule '{}' matches window: {} ({})", rule.name, window.app_name, window.window_id);
-                
-                if let Err(e) = execute_action(&rule.action, window) {
-                    eprintln!("Failed to execute action '{}' for window {}: {}", rule.action, window.window_id, e);
-                    continue;
+        match &rule.rule_type {
+            RuleType::Window { condition, action } => {
+                // Only process window rules if there are windows in the workspace
+                if !workspace_windows.is_empty() {
+                    for window in &workspace_windows {
+                        if matches_condition(condition, window)? {
+                            println!("Rule '{}' matches window: {} ({})", rule.name, window.app_name, window.window_id);
+                            
+                            if let Err(e) = execute_action(action, window) {
+                                eprintln!("Failed to execute action '{}' for window {}: {}", action, window.window_id, e);
+                                continue;
+                            }
+                            
+                            actions_performed.push(format!(
+                                "Applied '{}' to {} (ID: {}): {}",
+                                rule.name, window.app_name, window.window_id, action
+                            ));
+                        }
+                    }
                 }
-                
-                actions_performed.push(format!(
-                    "Applied '{}' to {} (ID: {}): {}",
-                    rule.name, window.app_name, window.window_id, rule.action
-                ));
+            }
+            RuleType::EmptyWorkspace { workspace: rule_workspace, command } => {
+                // Only process empty workspace rules if workspace is empty and matches
+                if workspace_windows.is_empty() && rule_workspace == workspace {
+                    println!("Workspace {} is empty, executing command: {}", workspace, command);
+                    
+                    if let Err(e) = execute_empty_workspace_command(command) {
+                        eprintln!("Failed to execute empty workspace command '{}': {}", command, e);
+                        actions_performed.push(format!("Failed to execute empty workspace command '{}': {}", rule.name, e));
+                    } else {
+                        actions_performed.push(format!("Executed empty workspace rule '{}': {}", rule.name, command));
+                    }
+                }
             }
         }
     }
@@ -118,5 +138,40 @@ fn execute_action(action: &str, window: &WindowInfo) -> Result<(), Box<dyn std::
         return Err(format!("Unknown action: {}", action).into());
     }
     
+    Ok(())
+}
+
+fn execute_empty_workspace_command(command: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Executing empty workspace command: {}", command);
+    
+    // Parse command and arguments
+    let parts: Vec<&str> = command.split_whitespace().collect();
+    if parts.is_empty() {
+        return Err("Empty command".into());
+    }
+    
+    let program = parts[0];
+    let args = &parts[1..];
+    
+    let output = Command::new(program)
+        .args(args)
+        .output()?;
+    
+    if !output.status.success() {
+        return Err(format!(
+            "Command '{}' failed with exit code {:?}: {}",
+            command,
+            output.status.code(),
+            String::from_utf8_lossy(&output.stderr)
+        ).into());
+    }
+    
+    // Log stdout if there's any output
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if !stdout.trim().is_empty() {
+        println!("Command output: {}", stdout.trim());
+    }
+    
+    println!("Successfully executed empty workspace command: {}", command);
     Ok(())
 }
