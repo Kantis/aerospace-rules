@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::process::Command;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(serde::Serialize, Deserialize, Debug, Clone)]
 pub struct WindowInfo {
     #[serde(rename = "app-name")]
     pub app_name: String,
