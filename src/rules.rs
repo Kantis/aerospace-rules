@@ -1,3 +1,4 @@
+use std::error::Error;
 use crate::{
     config::{Config, RuleType},
     WindowInfo,
@@ -8,7 +9,7 @@ pub fn evaluate_rules_for_workspace(
     workspace: &str,
     windows: &[WindowInfo],
     config: &Config,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+) -> Result<Vec<String>, Box<dyn Error>> {
     let mut actions_performed = Vec::new();
 
     // Get windows in the specified workspace
@@ -95,7 +96,7 @@ pub fn evaluate_rules_for_workspace(
 fn matches_condition(
     condition: &str,
     window: &WindowInfo,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn Error>> {
     // Simple condition parser for now
     // Format: "field = 'value'" or "field > number"
 
@@ -137,7 +138,7 @@ fn matches_condition(
     }
 }
 
-fn execute_action(action: &str, window: &WindowInfo) -> Result<(), Box<dyn std::error::Error>> {
+fn execute_action(action: &str, window: &WindowInfo) -> Result<(), Box<dyn Error>> {
     println!(
         "Executing action: {} for window {}",
         action, window.window_id
@@ -190,16 +191,20 @@ fn execute_action(action: &str, window: &WindowInfo) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-fn execute_empty_workspace_command(command: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn execute_empty_workspace_command(command: &str) -> Result<(), Box<dyn Error>> {
     println!("Executing empty workspace command: {}", command);
 
     // Parse command and arguments
-    let parts: Vec<&str> = command.split_whitespace().collect();
+    let parts = match shlex::split(command) {
+        Some(parts) => parts,
+        None => return Err(format!("Failed to parse command: {}", command).into()),
+    };
+    
     if parts.is_empty() {
         return Err("Empty command".into());
     }
 
-    let program = parts[0];
+    let program = &parts[0];
     let args = &parts[1..];
 
     let output = Command::new(program).args(args).output()?;
