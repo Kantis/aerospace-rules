@@ -26,6 +26,7 @@ pub enum Response {
 pub struct ServiceState {
     pub windows: Vec<WindowInfo>,
     pub config: Option<config::Config>,
+    pub config_path: Option<String>,
 }
 
 pub const SOCKET_PATH: &str = "/tmp/aerospace-rules.sock";

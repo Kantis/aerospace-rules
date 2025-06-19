@@ -1,9 +1,19 @@
 use aerospace_rules::{config, aerospace, rules, Request, Response, ServiceState, SOCKET_PATH};
+use clap::Parser;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::net::{UnixListener, UnixStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::time::Duration;
+
+#[derive(Parser)]
+#[command(name = "aerospace-rules-service")]
+#[command(about = "A service for managing aerospace window rules")]
+struct Args {
+    /// Path to config file
+    #[arg(short, long)]
+    config: Option<String>,
+}
 
 type SharedState = Arc<RwLock<ServiceState>>;
 
@@ -65,7 +75,13 @@ async fn refresh_state(state: SharedState) {
         }
     };
     
-    let config = config::load_config();
+    let config = {
+        let state_guard = state.read().await;
+        match &state_guard.config_path {
+            Some(path) => config::load_config_from_path(Some(path)),
+            None => config::load_config(),
+        }
+    };
     
     let mut state_guard = state.write().await;
     state_guard.windows = windows;
@@ -85,12 +101,15 @@ async fn periodic_refresh(state: SharedState) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+    
     println!("Starting aerospace-rules service...");
     
     // Initialize state
     let state = Arc::new(RwLock::new(ServiceState {
         windows: Vec::new(),
         config: None,
+        config_path: args.config,
     }));
     
     // Initial state refresh

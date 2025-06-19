@@ -1,0 +1,9 @@
+[[rules]]
+name = "Test Rule"
+condition = "app-name = 'Ghostty'"
+action = "maximize"
+
+[[rules]]
+name = "Move IntelliJ"
+condition = "app-name = 'IntelliJ IDEA'"
+action = "move-to-workspace 5"

@@ -1,4 +1,5 @@
 use aerospace_rules::{config, aerospace, Request, Response, SOCKET_PATH};
+use clap::Parser;
 use tokio::net::UnixStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::env;
@@ -18,10 +19,31 @@ async fn query_service(request: Request) -> Result<Response, Box<dyn std::error:
     Ok(response)
 }
 
-async fn fallback_direct() -> Result<(), Box<dyn std::error::Error>> {
+#[derive(Parser)]
+#[command(name = "aerospace-rules-cli")]
+#[command(about = "A CLI client for aerospace window rules")]
+struct Args {
+    /// Path to config file
+    #[arg(short, long)]
+    config: Option<String>,
+    
+    /// Command to execute
+    #[arg(value_enum)]
+    command: Option<Command>,
+}
+
+#[derive(clap::ValueEnum, Clone)]
+enum Command {
+    Windows,
+    Config,
+    Reload,
+    OnWorkspaceChange,
+}
+
+async fn fallback_direct(config_path: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     println!("Service unavailable, falling back to direct queries...");
     
-    match config::load_config() {
+    match config::load_config_from_path(config_path) {
         Some(config) => {
             println!("Loaded {} rules", config.rules.len());
             for rule in &config.rules {
@@ -46,21 +68,33 @@ async fn fallback_direct() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    let command = args.get(1).map(|s| s.as_str()).unwrap_or("windows");
+    let args = Args::parse();
+    
+    // Handle legacy command line arguments for backwards compatibility
+    let command = if let Some(cmd) = args.command {
+        cmd
+    } else {
+        let legacy_args: Vec<String> = env::args().collect();
+        match legacy_args.get(1).map(|s| s.as_str()).unwrap_or("windows") {
+            "windows" => Command::Windows,
+            "config" => Command::Config,
+            "reload" => Command::Reload,
+            "on-workspace-change" => Command::OnWorkspaceChange,
+            _ => {
+                eprintln!("Usage: {} [--config <path>] [windows|config|reload|on-workspace-change]", legacy_args[0]);
+                return Ok(());
+            }
+        }
+    };
     
     let request = match command {
-        "windows" => Request::GetWindows,
-        "config" => Request::GetConfig,
-        "reload" => Request::Reload,
-        "on-workspace-change" => {
+        Command::Windows => Request::GetWindows,
+        Command::Config => Request::GetConfig,
+        Command::Reload => Request::Reload,
+        Command::OnWorkspaceChange => {
             let workspace = env::var("AEROSPACE_FOCUSED_WORKSPACE")
                 .map_err(|_| "AEROSPACE_FOCUSED_WORKSPACE environment variable not set")?;
             Request::EvaluateRules { workspace }
-        }
-        _ => {
-            eprintln!("Usage: {} [windows|config|reload|on-workspace-change]", args[0]);
-            return Ok(());
         }
     };
     
@@ -99,8 +133,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             eprintln!("Failed to connect to service: {}", e);
-            if command == "windows" {
-                fallback_direct().await?;
+            if matches!(command, Command::Windows) {
+                fallback_direct(args.config.as_deref()).await?;
             }
         }
     }
